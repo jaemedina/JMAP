@@ -1,7 +1,7 @@
 #Target Library
 
 lib := libJMAP.a
-objs := JMAP.o
+objs := JMAP.o Polygon.o
 compiled :=
 CC := g++
 CFLAGS := -Wall -g -std=c++11 -fPIC -no-pie

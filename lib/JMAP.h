@@ -4,7 +4,6 @@
 #include <vector>
 
 
-
 #define MAX_OPEN_BMP 256
 #define BRUSH_COUNT 6
 
@@ -47,6 +46,7 @@ typedef struct v3{
 	float z;
 }v3f;
 
+//CLASS DECLARATIONS
 class polygon{
 	private:
 	std::vector<v2f> vertices;
@@ -71,6 +71,7 @@ class polygon{
 	v2f getCentroid();
 	void moveVertex(int idx, int x, int y);
 };
+
 
 
 const HSV_t palette1[]={
@@ -186,7 +187,7 @@ int bmp_random(int min, int max);
 
 float bmp_rand_normal(float mean, float stddev);
 
-
+v2i v2fTov2i(const v2f v);
 
 //TEMPLATE//
 
