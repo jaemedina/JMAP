@@ -1,5 +1,6 @@
 #include <math.h>
 #include <algorithm>
+#include <iostream>
 #include "JMAP.h"
 
 
@@ -16,7 +17,7 @@ polygon::polygon(){
 void polygon::buffUpdate(){
 	if(buff != -1){
 		bmp_close(buff);
-	}	
+	}
 
 	int xmin = vertices[0].x;
 	int xmax = xmin;
@@ -51,10 +52,10 @@ void polygon::buffUpdate(){
 			vertices[i].x -= xmin;
 		}
 		xmax -= xmin;
-		xmin = 0;		
+		xmin = 0;
 	}
 
-	buff = bmp_new("./Images/shapes/shape.bmp", xmax, ymax);
+	buff = bmp_new("./Images/shapes/shape.bmp", xmax + 1, ymax + 1);
 }
 
 v2f polygon::getCentroid(){
@@ -76,12 +77,12 @@ v2f polygon::getCentroid(){
 }
 
 void polygon::outline(){
-	
+
 	for(int i = 0; i < size() - 1; i++){
-		bmp_draw_line(buff, v2fTov2i(vertices[i]), v2fTov2i(vertices[i+1]), bmp_HSV_to_RGB(color));
+		bmp_draw_line(buff, v2fTov2i(vertices[i]), v2fTov2i(vertices[i+1]), BLACKRGB);
 	}
 
-	bmp_draw_line(buff, v2fTov2i(vertices[vertices.size()-1]), v2fTov2i(vertices[0]), bmp_HSV_to_RGB(color));
+	bmp_draw_line(buff, v2fTov2i(vertices[vertices.size()-1]), v2fTov2i(vertices[0]), BLACKRGB);
 	bmp_write_out(buff);
 
 
@@ -95,8 +96,8 @@ void polygon::draw(bmp_t img, int x, int y){
 	for(int i = 0; i < bmp_get_height(buff); i++){
 		for(int j = 0; j < bmp_get_width(buff); j++){
 			bmp_get_pixRGB(buff, j, i, &colorBuff);
-			if(colorBuff.R == BLACKRGB.R){
-				bmp_set_pixRGB(img, x - centroid.x + j, y - centroid.y + i, bmp_HSV_to_RGB(color));
+			if(colorBuff.R != WHITERGB.R || colorBuff.G != WHITERGB.G || colorBuff.B != WHITERGB.B){
+				bmp_set_pixRGB(img, x - centroid.x + j, y - centroid.y + i, colorBuff);
 			}
 		}
 	}
@@ -106,10 +107,10 @@ void polygon::draw(bmp_t img, int x, int y){
 
 
 void polygon::fill(){
-	
-	outline();
+
 
 	int scanline;
+	RGB_t rgbCol = bmp_HSV_to_RGB(color);
 
 	int j;
 	for(scanline = 0; scanline < bmp_get_height(buff); scanline++){
@@ -128,8 +129,8 @@ void polygon::fill(){
 			activeLines.push_back(vertices[size() - 1]);
 			activeLines.push_back(vertices[0]);
 		}
-	
-		for(j = 0; j < (int)activeLines.size(); j+=2){
+
+		for(j = 0; j < (int)activeLines.size() - 1; j+=2){
 			float m = (activeLines[j+1].x - activeLines[j].x)/(activeLines[j+1].y - activeLines[j].y);
 			float inter = ((float)scanline - activeLines[j].y) * m + activeLines[j].x;
 			intersections.push_back((int)roundf(inter));
@@ -151,16 +152,18 @@ void polygon::fill(){
 				while(itr + 1 != intersections.end() && ( *(itr + 1) - *itr) == 1){
 					itr++;
 				}
-				
+
 				while(j < *itr){
-					bmp_set_pixRGB(buff, j, scanline, BLACKRGB);
-					j++;				
+					bmp_set_pixRGB(buff, j, scanline, rgbCol);
+					j++;
 				}
 
 				itr++;
 			}
 		}
 	}
+
+	outline();
 
 	bmp_write_out(buff);
 }
@@ -183,7 +186,7 @@ void polygon::scale(float factor){
 
 }
 void polygon::rotate(float angle){
-	
+
 	v2f centroid = getCentroid();
 
 	for(int i = 0; i < size(); i++){
@@ -211,4 +214,7 @@ void polygon::removeVertex(int idx){
 v2f polygon::getVertex(int idx){
 	return(vertices[idx]);
 }
-void moveVertex(int idx, int x, int y);
+void polygon::moveVertex(int idx, int x, int y){
+	vertices[idx].x += x;
+	vertices[idx].y += y;
+};

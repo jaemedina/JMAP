@@ -55,6 +55,7 @@ int bmp_next_free_bmp(void){
 		if(BMPList[i]==NULL)
 			return i;
 	}
+	printf("FULL\n");
 	return -1;
 }
 
@@ -89,7 +90,7 @@ int bmp_find_idx(bmp_t bmpNum, int x, int y){
 
 	if(!bmp_is_open(bmpNum))
 		return -1;
-	
+
 	BMP *bmp = BMPList[bmpNum];
 	if(x >= bmp->BIH->BMPWidth || y >= bmp->BIH->BMPHeight || x < 0 || y < 0)
 		return -1;
@@ -97,7 +98,7 @@ int bmp_find_idx(bmp_t bmpNum, int x, int y){
 	int padding = (4 - (bmp->BIH->BMPWidth * 3) % 4) % 4;
 
 	return(y*(bmp->BIH->BMPWidth * 3 + padding) + x * 3);
-	
+
 }
 
 
@@ -134,7 +135,7 @@ int bmp_print_info(bmp_t bmpNum){
 	if(!bmp_is_open(bmpNum)){
 		return -1;
 	}
-	
+
 	BMP *bmp = BMPList[bmpNum];
 
 	printf("BMP Information:\nInfo Header Size = %d\nWidth = %d\nHeight = %d\nBits Per pixel = %d\nOffset = %d\nData Size = %d\n",
@@ -170,7 +171,7 @@ int bmp_alloc(BMP *bmp, const char *fileName, const char mode){
 		free(bmpInfoHeader);
 		return -1;
 	}
-	
+
 	int nextBmpIdx = bmp_next_free_bmp();
 	if(nextBmpIdx == -1){
 		printf("ERROR: Too many BMP's open\n");
@@ -193,7 +194,7 @@ int bmp_alloc(BMP *bmp, const char *fileName, const char mode){
 		}
 	}
 	//w mode opens the file in write mode
-	else if (mode == 'w'){	
+	else if (mode == 'w'){
 		fileptr = fopen(fileName, "w+b");
 		if(fileptr == NULL){
 			printf("ERROR: Could not open file %s\n", fileName);
@@ -210,7 +211,7 @@ int bmp_alloc(BMP *bmp, const char *fileName, const char mode){
 		free(bmpFileHeader);
 		free(bmpInfoHeader);
 		return -1;
-	
+
 	}
 
 	bmp->fileptr = fileptr;
@@ -226,9 +227,9 @@ int bmp_alloc(BMP *bmp, const char *fileName, const char mode){
 //@ mode: mode to open the file as (read or write)
 //
 //Return: Index of the newly created bmp file, -1 if opening the given file
-//	  failed 
+//	  failed
 bmp_t bmp_open(const char* fileName, const char mode){
-	
+
 	BMP *bmp = (BMP *)malloc(sizeof(BMP));
 	if(bmp == NULL){
 		free(bmp);
@@ -244,7 +245,7 @@ bmp_t bmp_open(const char* fileName, const char mode){
 	//read the contents of the file into header structs
 	fread(bmp->BFH, sizeof(BMP_FILE_HEADER), 1, bmp->fileptr);
 	fread(bmp->BIH, sizeof(BMP_INFO_HEADER), 1, bmp->fileptr);
-	
+
 
 	//check to see if the file is of the right type
 	if(bmp->BFH->BMPSignature != 0x4D42){
@@ -257,7 +258,7 @@ bmp_t bmp_open(const char* fileName, const char mode){
 		return -1;
 	}
 
-	//allocate space for pixel information	
+	//allocate space for pixel information
 	BYTE *imageData = (BYTE *)malloc(bmp->BIH->BMPDataSize);
 
 	if(!imageData){
@@ -268,7 +269,7 @@ bmp_t bmp_open(const char* fileName, const char mode){
 		free(bmp);
 		return -1;
 	}
-	
+
 	//copy pixel data into image buffer
 	fseek(bmp->fileptr, bmp->BFH->BMPOffset, SEEK_SET);
 	fread(imageData, bmp->BIH->BMPDataSize, 1, bmp->fileptr);
@@ -299,6 +300,7 @@ bmp_t bmp_close(bmp_t bmpNum){
 	free(bmpToDelete->BFH);
 	free(bmpToDelete->BIH);
 	free(bmpToDelete);
+	BMPList[bmpNum] = NULL;
 
 	return 0;
 }
@@ -333,7 +335,7 @@ bmp_t bmp_copy(const char* fileName, const bmp_t bmpNum){
 	if(bmp_alloc(newBMP, fileName,'w')){
 		free(newBMP);
 		return -1;
-	}	
+	}
 
 	newBMP->imageBuf = (BYTE *)malloc((oldBMP->BIH->BMPDataSize));
 	if(!newBMP->imageBuf){
@@ -365,12 +367,15 @@ bmp_t bmp_copy(const char* fileName, const bmp_t bmpNum){
 //Return: bmp index of the new file, -1 if error
 int bmp_new(const char* fileName, const int width, const int height){
 	if(fileName == NULL || width <= 0 || height <= 0){
+		printf("ERROR: Invalid parameters for bmp_new\n");
+		printf("x: %d y: %d\n", width, height);
 		return -1;
 	}
 
 	BMP *newBMP = (BMP *)malloc(sizeof(BMP));
 	if(bmp_alloc(newBMP, fileName, 'w')){
 		free(newBMP);
+		printf("ERROR: Failed to allocate space for %s\n", fileName);
 		return -1;
 	}
 
@@ -382,10 +387,11 @@ int bmp_new(const char* fileName, const int width, const int height){
 	if(!imageBuff){
 		free(newBMP);
 		free(imageBuff);
+		printf("ERROR: Failed to allocate pixel data for %s\n", fileName);
 		return -1;
 	}
 
-	memset(imageBuff, 255, imageSize);	
+	memset(imageBuff, 255, imageSize);
 
 	newBMP->BFH->BMPSignature = 0x4D42;
 	newBMP->BIH->BMPWidth = width;
@@ -416,7 +422,7 @@ int bmp_write_out(const bmp_t bmpNum){
 	if(!bmp_is_open(bmpNum)){
 		return -1;
 	}
-	
+
 	BMP *bmp = BMPList[bmpNum];
 
 	fwrite(bmp->BFH, sizeof(BMP_FILE_HEADER), 1, bmp->fileptr);
@@ -499,7 +505,7 @@ int bmp_set_pixRGBA(const bmp_t bmpNum, const int x, const int y, const RGB_t RG
 	if(!bmp_is_open(bmpNum)){
 		return -1;
 	}
-	
+
 	if(alpha > 1)
 		alpha = 1;
 	if(alpha < 0)
@@ -512,7 +518,7 @@ int bmp_set_pixRGBA(const bmp_t bmpNum, const int x, const int y, const RGB_t RG
 	if(x >= bmp->BIH->BMPWidth || x < 0 || y >= bmp->BIH->BMPHeight || y < 0){
 		return -1;
 	}
-	
+
 	bmp_get_pixRGB(bmpNum, x, y, &dest);
 	res = bmp_interpolateRGB(RGB, dest, alpha);
 
@@ -529,7 +535,7 @@ int bmp_set_pixRGBA(const bmp_t bmpNum, const int x, const int y, const RGB_t RG
 //@ fileIn
 int bmp_copy_header(char* fileIn, char* fileOut, char* newImage, int offsetSize, int imageSize){
 	FILE *fptrIn, *fptrOut;
-	
+
 	fptrIn = fopen(fileIn, "rb");
 	fptrOut = fopen(fileOut, "wb");
 
@@ -560,7 +566,7 @@ int bmp_copy_header(char* fileIn, char* fileOut, char* newImage, int offsetSize,
 int bmp_fill(const bmp_t bmpNum, const RGB_t fill){
 	if(!bmp_is_open(bmpNum))
 		return -1;
-	
+
 	int x;
 	int y;
 	int width = bmp_get_width(bmpNum);
@@ -568,7 +574,7 @@ int bmp_fill(const bmp_t bmpNum, const RGB_t fill){
 
 	for(y = 0; y < height; y++){
 		for(x = 0; x < width; x++){
-			bmp_set_pixRGB(bmpNum, x, y, fill);	
+			bmp_set_pixRGB(bmpNum, x, y, fill);
 		}
 	}
 
@@ -605,7 +611,7 @@ int bmp_draw_line(const bmp_t bmpNum, const v2i a, const v2i b, const RGB_t rgb)
 
 	int p = ddy - dx;
 	int itr;
-	int yk = 0; 
+	int yk = 0;
 
 	bmp_set_pixRGB(bmpNum, a.x, a.y, rgb);
 	//small slope
@@ -660,7 +666,7 @@ int bmp_draw_line(const bmp_t bmpNum, const v2i a, const v2i b, const RGB_t rgb,
 
 	int p = ddy - dx;
 	int itr;
-	int yk = 0; 
+	int yk = 0;
 
 	bmp_set_pixRGB(bmpNum, a.x, a.y, rgb);
 	//small slope
@@ -719,7 +725,7 @@ int bmp_draw_line_alpha(const bmp_t bmpNum, const v2i a, const v2i b, const RGB_
 
 	int p = ddy - dx;
 	int itr;
-	int yk = 0; 
+	int yk = 0;
 
 	bmp_set_pixRGB(bmpNum, a.x, a.y, rgb);
 	//small slope
@@ -779,7 +785,7 @@ int bmp_draw_brush_line(const bmp_t bmpNum, const v2i a, const v2i b, const RGB_
 
 	int p = ddy - dx;
 	int itr;
-	int yk = 0; 
+	int yk = 0;
 
 	bmp_set_pixRGB(bmpNum, a.x, a.y, rgb);
 	//small slope
@@ -827,7 +833,7 @@ int bmp_draw_brush_line(const bmp_t bmpNum, const v2i a, const v2i b, const RGB_
 RGB_t bmp_get_avg_RGB(const bmp_t bmpNum, const int x, const int y, const int area){
 	RGB_t avg;
 	RGB_t rgbBuf;
-	
+
 	int xx, yy;
 	int avgr = 0;
 	int avgg = 0;
@@ -843,7 +849,7 @@ RGB_t bmp_get_avg_RGB(const bmp_t bmpNum, const int x, const int y, const int ar
 			}
 		}
 	}
-	
+
 	avg.R = avgr/N;
 	avg.G = avgg/N;
 	avg.B = avgb/N;
@@ -854,7 +860,7 @@ RGB_t bmp_get_avg_RGB(const bmp_t bmpNum, const int x, const int y, const int ar
 
 
 int bmp_brush_stroke(const int x, const int y, const int bmpNum, const RGB_t rgb, const brush_t brush){
-	
+
 	int xx, yy;
 	int brushWidth = bmp_get_width(brush);
 	int brushHeight = bmp_get_height(brush);
@@ -867,9 +873,9 @@ int bmp_brush_stroke(const int x, const int y, const int bmpNum, const RGB_t rgb
 			bmp_get_pixRGB(bmpNum, x+xx-(brushWidth/2), y+yy-(brushHeight/2), &baseRGB);
 			ratio = ((float)(255-brushRGB.R)/255);
 			RGBbuf = bmp_interpolateRGB(rgb, baseRGB, ratio);
-			bmp_set_pixRGB(bmpNum, x+xx-(brushWidth/2), y+yy-(brushHeight/2), RGBbuf); 
+			bmp_set_pixRGB(bmpNum, x+xx-(brushWidth/2), y+yy-(brushHeight/2), RGBbuf);
 		}
-	}	
+	}
 
 	return 0;
 }
@@ -946,7 +952,7 @@ int bmp_close_brushes(void){
 		}
 		brushList[i] = -1;
 	}
-	
+
 	return 0;
 
 }
@@ -960,11 +966,17 @@ int bmp_close_brushes(void){
 RGB_t bmp_HSV_to_RGB(HSV_t hsv){
 	RGB_t rgb;
 
+	if(hsv.s > 1) hsv.s = 1;
+	if(hsv.v > 1) hsv.v = 1;
+	if(hsv.s < 0) hsv.s = 0;
+	if(hsv.v < 0) hsv.v = 0;
+
 	if(hsv.s == 0){
 		BYTE v = (BYTE)(hsv.v * 255);
 		rgb = {v, v, v};
 		return rgb;
 	}
+
 	hsv.h = (int)hsv.h % 360;
 
 	int hi = hsv.h/60;
@@ -974,7 +986,7 @@ RGB_t bmp_HSV_to_RGB(HSV_t hsv){
 	float t = hsv.v * (1.0f - hsv.s * (1.0f - f));
 
 	switch (hi){
-	
+
 		case 0:
 			rgb = {(BYTE)(hsv.v * 255), (BYTE)(t * 255), (BYTE)(p * 255)};
 			break;
@@ -1031,7 +1043,7 @@ HSV_t bmp_RGB_to_HSV(const RGB_t rgb){
 	else if(max == rgbf.y){
 	 	hsv.h = 60.0f * (2 + (rgbf.z - rgbf.x)/(max - min));
 	}
-	else if(max == rgbf.z){ 
+	else if(max == rgbf.z){
 		hsv.h = 60.0f * (4 + (rgbf.x - rgbf.y)/(max - min));
 	}
 
@@ -1087,7 +1099,7 @@ void bmp_twotone(const bmp_t bmpNum, const int lineSize){
 	}
 
 	bmp_grayscale(bmpNum);
-	
+
 	int width = bmp_get_width(bmpNum);
 	int height = bmp_get_height(bmpNum);
 	RGB_t pixbuff;
@@ -1111,7 +1123,7 @@ void bmp_twotone(const bmp_t src, const bmp_t dest, const int lineSize){
 
 
 	bmp_grayscale(src);
-	
+
 	int width = bmp_get_width(src);
 	int height = bmp_get_height(src);
 	RGB_t pixbuff;
@@ -1164,7 +1176,7 @@ float bmp_rand_normal(float mean, float stddev){
 		{
 			x = 2.0*rand()/RAND_MAX - 1;
 			y = 2.0*rand()/RAND_MAX - 1;
-	
+
 			r = x*x + y*y;
 		}
 		while (r == 0.0 || r > 1.0);
@@ -1211,6 +1223,33 @@ void bmp_mask(const bmp_t src, const bmp_t dest, const bmp_t mask){
 }
 
 
+int bmp_background(const bmp_t bmpNum, const HSV_t hsv, const int numLines){
+
+	if(!bmp_is_open(bmpNum)) return 1;
+	if(!RANDOMINIT) bmp_random_init();
+
+	HSV_t col = hsv;
+
+	const int width = bmp_get_width(bmpNum);
+	const int height = bmp_get_height(bmpNum);
+
+	for(int i = 0; i < numLines; i++){
+		int x = bmp_random(width);
+		int y = bmp_random(height);
+
+		float val = (sin(x * .002) + cos(y * .003)) * M_PI * 2 * .2;
+		col.s = bmp_rand_normal(hsv.s, .008);
+		col.v = bmp_rand_normal(hsv.v, .008);
+
+		bmp_draw_line(bmpNum, {x,y}, {x + (int)(sin(val) * 70), y + (int)(cos(val) * 70)}, bmp_HSV_to_RGB(col), 2);
+
+		}
+
+	bmp_write_out(bmpNum);
+	return 0;
+}
+
+
 template <typename T>
 int count(T container[]){
 	return(sizeof(container)/sizeof(*container[0]));
@@ -1252,7 +1291,7 @@ palette_t bmp_generate_palette(const int _numColors, paletteType _type){
 
 	HSV_t *_colors = (HSV_t*)malloc(sizeof(HSV_t) * _numColors);
 	if (_colors == NULL){
-		return pal;	
+		return pal;
 	}
 
 	int hue;
@@ -1275,13 +1314,13 @@ palette_t bmp_generate_palette(const int _numColors, paletteType _type){
 			hue = bmp_random(360);
 			_colors[0] = {(float)hue, .31, .18};
 			_colors[1] = {(float)hue, .14, .98};
-			for(; i < _numColors/2; i++){	
+			for(; i < _numColors/2; i++){
 				_colors[i].h = bmp_rand_normal(hue, 2);
 				_colors[i].s = bmp_rand_normal(sat, .1);
 				_colors[i].v = bmp_rand_normal(val, .1);
 			}
 
-			for(; i < _numColors; i++){	
+			for(; i < _numColors; i++){
 				_colors[i].h = bmp_rand_normal((hue + 180) % 360, 2);
 				_colors[i].s = bmp_rand_normal(sat, .1);
 				_colors[i].v = bmp_rand_normal(val, .1);
@@ -1302,7 +1341,7 @@ palette_t bmp_generate_palette(const int _numColors, paletteType _type){
 				_colors[i].s = bmp_rand_normal(sat, .1);
 				_colors[i].v = bmp_rand_normal(val, .1);
 			}
-			for(; i < _numColors; i++){		
+			for(; i < _numColors; i++){
 				_colors[i].h = bmp_rand_normal((hue + 210) % 360, 5);
 				_colors[i].s = bmp_rand_normal(sat, .1);
 				_colors[i].v = bmp_rand_normal(val, .1);
@@ -1323,7 +1362,7 @@ palette_t bmp_generate_palette(const int _numColors, paletteType _type){
 				_colors[i].s = bmp_rand_normal(sat, .1);
 				_colors[i].v = bmp_rand_normal(val, .1);
 			}
-			for(; i < _numColors; i++){		
+			for(; i < _numColors; i++){
 				_colors[i].h = bmp_rand_normal((hue + 240) % 360, 5);
 				_colors[i].s = bmp_rand_normal(sat, .1);
 				_colors[i].v = bmp_rand_normal(val, .1);
@@ -1344,12 +1383,12 @@ palette_t bmp_generate_palette(const int _numColors, paletteType _type){
 				_colors[i].s = bmp_rand_normal(sat, .1);
 				_colors[i].v = bmp_rand_normal(val, .1);
 			}
-			for(; i < _numColors*3/4; i++){		
+			for(; i < _numColors*3/4; i++){
 				_colors[i].h = bmp_rand_normal((hue + 180) % 360, 5);
 				_colors[i].s = bmp_rand_normal(sat, .1);
 				_colors[i].v = bmp_rand_normal(val, .1);
 			}
-			for(; i < _numColors; i++){		
+			for(; i < _numColors; i++){
 				_colors[i].h = bmp_rand_normal((hue + 270) % 360, 5);
 				_colors[i].s = bmp_rand_normal(sat, .1);
 				_colors[i].v = bmp_rand_normal(val, .1);
@@ -1371,7 +1410,7 @@ palette_t bmp_generate_palette(const int _numColors, paletteType _type){
 				_colors[i].s = bmp_rand_normal(sat, .1);
 				_colors[i].v = bmp_rand_normal(val, .1);
 			}
-			for(; i < _numColors; i++){		
+			for(; i < _numColors; i++){
 				_colors[i].h = bmp_rand_normal((hue + -30) % 360, 5);
 				_colors[i].s = bmp_rand_normal(sat, .1);
 				_colors[i].v = bmp_rand_normal(val, .1);
@@ -1379,7 +1418,7 @@ palette_t bmp_generate_palette(const int _numColors, paletteType _type){
 			break;
 
 		default:
-			break;	
+			break;
 	}
 
 

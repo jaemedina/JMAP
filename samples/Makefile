@@ -13,7 +13,10 @@ programs := \
 	colorTest.x \
 	shapeTest.x \
 	texture.x \
-	twotone.x
+	twotone.x \
+	sketch1.x \
+	sketch2.x \
+	sketch3.x
 
 #Libraries
 JMAPLIB := libJMAP
@@ -49,7 +52,7 @@ deps := $(patsubst %.o,%.d,$(objs))
 
 $(libJMAP):
 	$(MAKE) -C $(JMAPPATH)
-	
+
 %.x: %.o $(libJMAP)
 	$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS)
 

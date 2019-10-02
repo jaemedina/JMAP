@@ -186,6 +186,8 @@ int bmp_random(int range);
 int bmp_random(int min, int max);
 
 float bmp_rand_normal(float mean, float stddev);
+//creates a textured background for image bmpNum
+int bmp_background(const bmp_t bmpNum, const HSV_t hsv, const int numLines);
 
 v2i v2fTov2i(const v2f v);
 
@@ -194,7 +196,7 @@ v2i v2fTov2i(const v2f v);
 template <typename T>
 T bmp_weighted_choice(const T items[], const float weights[], const int size){
 
-		
+
 	if(size == 1){
 		return items[0];
 	}
